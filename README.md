@@ -1,2 +1,3 @@
-# us_cpi
-Collect all procedures related to US CPI (forecast, core, etc)
+# US CPI files and procedures
+Collect all procedures related to US CPI (forecast, core, etc).
+
