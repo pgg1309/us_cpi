@@ -1,0 +1,244 @@
+---
+title: "Core CPI Report"
+author: "Dr. Paulo Gustavo Grahl, CFA"
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output: blastula::blastula_email
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE)
+```
+
+## US CPI
+
+```{r}
+require(tidyverse)
+require(lubridate)
+official <- read_rds("../data/uscpi_official.rds")
+last.date <- max(na.omit(official$date))
+
+INITIAL_DATE <- "2000-01-15"
+
+headline <- official %>% 
+  filter(series == "all.sa") %>% 
+  arrange(date) %>%
+  na.omit() %>% 
+  mutate(m.ar = 100 * ((value / lag(value, 1))^12 - 1),
+         q.ar = 100 * ((value / lag(value, 3))^4  - 1),
+         y.ar = 100 * (value / lag(value,12) - 1)
+         ) %>% 
+  select(-series, -value) %>%
+  filter(date >= INITIAL_DATE)
+
+core <- official %>% 
+  filter(series == "core.sa") %>%
+  arrange(date) %>%
+  na.omit() %>%
+  mutate(m.ar = 100 * ((value / lag(value, 1))^12 - 1),
+         q.ar = 100 * ((value / lag(value, 3))^4  - 1),
+         y.ar = 100 * (value / lag(value,12) - 1)
+         ) %>% 
+  select(-value, -series) %>%
+    filter(date >= INITIAL_DATE)
+
+corex <- official %>% 
+  filter(series == "corex.sa") %>%
+  arrange(date) %>%
+  na.omit() %>%
+  mutate(m.ar = 100 * ((value / lag(value, 1))^12 - 1),
+         q.ar = 100 * ((value / lag(value, 3))^4  - 1),
+         y.ar = 100 * (value / lag(value,12) - 1)
+         ) %>% 
+  select(-value, -series) %>%
+  filter(date >= INITIAL_DATE)
+
+median.cpi <- read_rds("../data/uscpi_median.rds")
+trim16.cpi <- read_rds("../data/uscpi_trimmed16.rds")
+
+```
+
+### Main results
+
+```{r results="asis"}
+ytable <- select(headline, date, CPI = y.ar) %>%
+  left_join(select(corex, date, `Core CPI ex. Shelter` = y.ar)) %>%
+  left_join(select(core, date, `Core CPI` = y.ar)) %>%
+  left_join(select(median.cpi, date, `Median CPI` = y.ar)) %>%
+  left_join(select(trim16.cpi, date, `Trimmed CPI` = y.ar)) %>%
+  arrange(date) %>%
+  top_n(6, date) %>%
+  mutate(`Average Core` = (`Core CPI` + `Median CPI` + `Trimmed CPI`)/3) %>%
+  as.data.frame()
+
+rownames(ytable) <- format(ytable$date, "%b/%y")
+ytable <- ytable[,-1]  
+#knitr::kable(t(ytable),
+#             format = "html",
+#             digits = 2,
+#             caption = "US Inflation YoY (%)")
+stargazer::stargazer(t(ytable), flip = FALSE, summary = FALSE,
+                     type = "html",
+                     title = "US Inflation YoY (%)",
+                     digits = 2,
+                     digits.extra = 2,
+                     align = TRUE)
+
+```
+*<font size="2"> Obs: Average Core is the average of median, trimmed and ex. food and energy. </font>*
+<br><br>
+
+```{r results="asis"}
+qtable <- select(headline, date, CPI = q.ar) %>%
+  left_join(select(corex, date, `Core CPI ex. Shelter` = q.ar)) %>%
+  left_join(select(core, date, `Core CPI` = q.ar)) %>%
+  left_join(select(median.cpi, date, `Median CPI` = q.ar)) %>%
+  left_join(select(trim16.cpi, date, `Trimmed CPI` = q.ar)) %>%
+  arrange(date) %>%
+  top_n(6, date) %>%
+  mutate(`Average Core` = (`Core CPI` + `Median CPI` + `Trimmed CPI`)/3) %>%
+  as.data.frame()
+
+rownames(qtable) <- format(qtable$date, "%b/%y")
+qtable <- qtable[,-1]  
+# knitr::kable(t(qtable),
+#              format = "html",
+#              digits = 2,
+#              caption = "US Quarterly Inflation (% annualized)")
+stargazer::stargazer(t(qtable), 
+                     type = "html",
+                     title = "US Quarterly Inflation (% annualized)",
+                     digits = 2,
+                     digits.extra = 2,
+                     align = TRUE)
+```
+*<font size="2"> Obs: Average Core is the average of median, trimmed and ex. food and energy. </font>*
+
+<br><br>
+
+### Headline CPI
+```{r}
+select(headline, date, YoY = y.ar, QoQ = q.ar) %>% 
+  filter(date >= last.date %m-% months(48)) %>%
+  gather(Inflation, value, -date) %>%
+  ggplot(aes(x = date, y = value, color = Inflation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "US Headline Inflation",
+       subtitle = "% annualized",
+       x = NULL,
+       y = "%") +
+  scale_x_date(date_labels = "%b/%y", date_breaks = "6 months") +
+  scale_y_continuous(breaks = scales::pretty_breaks(5)) +
+  theme(legend.position = "bottom")
+```
+
+### Core CPI
+```{r}
+select(core, date, YoY = y.ar, QoQ = q.ar) %>% 
+  filter(date >= last.date %m-% months(48)) %>%
+  gather(Inflation, value, -date) %>%
+  ggplot(aes(x = date, y = value, color = Inflation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "US Core Inflation",
+       subtitle = "% annualized",
+       x = NULL,
+       y = "%") +
+  scale_x_date(date_labels = "%b/%y", date_breaks = "6 months") +
+  scale_y_continuous(breaks = scales::pretty_breaks(5)) +
+  theme(legend.position = "bottom")
+```
+
+### Core CPI excluding shelter
+```{r}
+select(corex, date, YoY = y.ar, QoQ = q.ar) %>% 
+  filter(date >= last.date %m-% months(48)) %>%
+  gather(Inflation, value, -date) %>%
+  ggplot(aes(x = date, y = value, color = Inflation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "US Core Inflation ex. Shelter",
+       subtitle = "% annualized",
+       x = NULL,
+       y = "%") +
+  scale_x_date(date_labels = "%b/%y", date_breaks = "6 months") +
+  scale_y_continuous(breaks = scales::pretty_breaks(5)) +
+  theme(legend.position = "bottom")
+```
+
+### Median CPI
+```{r}
+select(median.cpi, date, YoY = y.ar, QoQ = q.ar) %>% 
+  filter(date >= last.date %m-% months(48)) %>%
+  gather(Inflation, value, -date) %>%
+  ggplot(aes(x = date, y = value, color = Inflation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "US Median CPI",
+       subtitle = "% annualized",
+       x = NULL,
+       y = "%") +
+  scale_x_date(date_labels = "%b/%y", date_breaks = "6 months") +
+  scale_y_continuous(breaks = scales::pretty_breaks(5)) +
+  theme(legend.position = "bottom")
+```
+
+### Trimmed Mean CPI
+```{r}
+select(trim16.cpi, date, YoY = y.ar, QoQ = q.ar) %>% 
+  filter(date >= last.date %m-% months(48)) %>%
+  gather(Inflation, value, -date) %>%
+  ggplot(aes(x = date, y = value, color = Inflation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "US Trimmed CPI",
+       subtitle = "% annualized",
+       x = NULL,
+       y = "%") +
+  scale_x_date(date_labels = "%b/%y", date_breaks = "6 months") +
+  scale_y_continuous(breaks = scales::pretty_breaks(5)) +
+  theme(legend.position = "bottom")
+```
+
+### Comparing Core Measures (YoY)
+```{r}
+select(core, date, `Core CPI` = y.ar) %>%
+  left_join(select(median.cpi, date, `Median CPI` = y.ar)) %>%
+  left_join(select(trim16.cpi, date, `Trimmed CPI` = y.ar)) %>%
+  arrange(date) %>%
+  mutate(`Average Core` = (`Core CPI` + `Median CPI` + `Trimmed CPI`)/3) %>%
+  filter(date >= last.date %m-% months(48)) %>%
+  gather(Inflation, value, -date) %>%
+  ggplot(aes(x = date, y = value, color = Inflation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "US Core Inflation Measures (12 months)",
+       subtitle = "% YoY",
+       x = NULL,
+       y = "%") +
+  scale_x_date(date_labels = "%b/%y", date_breaks = "6 months") + 
+  scale_y_continuous(breaks = scales::pretty_breaks(5)) +
+  theme(legend.position = "bottom")
+```
+
+### Comparing Core Measures (QoQ)
+```{r}
+select(core, date, `Core CPI` = q.ar) %>%
+  left_join(select(median.cpi, date, `Median CPI` = q.ar)) %>%
+  left_join(select(trim16.cpi, date, `Trimmed CPI` = q.ar)) %>%
+  arrange(date) %>%
+  mutate(`Average Core` = (`Core CPI` + `Median CPI` + `Trimmed CPI`)/3) %>%
+  filter(date >= last.date %m-% months(48)) %>%
+  gather(Inflation, value, -date) %>%
+  ggplot(aes(x = date, y = value, color = Inflation)) +
+  geom_point() +
+  geom_line() +
+  labs(title = "US Core Inflation Measures (quarterly)",
+       subtitle = "% QoQ annualized",
+       x = NULL,
+       y = "%") +
+  scale_x_date(date_labels = "%b/%y", date_breaks = "6 months") +
+  scale_y_continuous(breaks = scales::pretty_breaks(5)) +
+  theme(legend.position = "bottom")
+```
+
