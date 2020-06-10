@@ -84,7 +84,7 @@ stargazer::stargazer(t(ytable), flip = FALSE, summary = FALSE,
                      align = TRUE)
 
 ```
-*<font size="2"> Obs: Average Core is the average of median, trimmed and ex. food and energy. </font>*
+*<font size="2"> Obs: Average Core is the average of median, trimm and ex. food and energy. </font>*
 <br><br>
 
 ```{r results="asis"}
@@ -111,7 +111,7 @@ stargazer::stargazer(t(qtable),
                      digits.extra = 2,
                      align = TRUE)
 ```
-*<font size="2"> Obs: Average Core is the average of median, trimmed and ex. food and energy. </font>*
+*<font size="2"> Obs: Average Core is the average of median, trimm and ex. food and energy. </font>*
 
 <br><br>
 
