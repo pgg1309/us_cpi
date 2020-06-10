@@ -6,13 +6,13 @@ library(blastula)
 
 email <- render_email("rmds/core_cpi_monthly_report.Rmd", quiet = FALSE)
 
-# create_smtp_creds_key(
-#   id = 'jgp',
-#   user = 'pgrahl@jgpglobal.com.br',
-#   host = 'smtp.office365.com',
-#   port = 587,
-#   use_ssl = TRUE
-# )
+create_smtp_creds_key(
+  id = 'jgp',
+  user = 'pgrahl@jgpglobal.com.br',
+  host = 'smtp.office365.com',
+  port = 587,
+  use_ssl = TRUE
+)
 
 
 
